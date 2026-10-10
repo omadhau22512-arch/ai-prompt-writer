@@ -1,9 +1,11 @@
+import { useState } from 'react';
+
 export default function PromptWriter() {
   const templateIdeas = [
     'Write a product launch email for a fitness app.',
     'Create a short, friendly customer support reply for delayed shipping.',
     'Generate an assistant that explains code clearly to beginners.',
-    'Draft a blog post outline about AI productivity for marketing teams.'
+    'Draft a blog post outline about AI productivity for marketing teams.',
   ];
 
   const [prompt, setPrompt] = useState('');
