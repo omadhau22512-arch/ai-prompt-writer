@@ -1,0 +1,58 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "OPENAI_API_KEY": "@openai_api_key",
+    "JWT_SECRET": "@jwt_secret",
+    "DATABASE_URL": "@database_url",
+    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/login",
+      "destination": "/auth/login",
+      "permanent": true
+    },
+    {
+      "source": "/signup",
+      "destination": "/auth/signup",
+      "permanent": true
+    }
+  ]
+}
