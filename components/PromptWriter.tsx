@@ -1,4 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+type PromptHistoryItem = {
+  id: string;
+  title: string;
+  prompt: string;
+  category: string;
+  createdAt: string;
+};
 
 export default function PromptWriter() {
   const templateIdeas = [
@@ -8,14 +16,42 @@ export default function PromptWriter() {
     'Draft a blog post outline about AI productivity for marketing teams.',
   ];
 
+  const categoryOptions = ['Marketing', 'Writing', 'Coding', 'Business', 'Productivity'];
+
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState('generate');
   const [tone, setTone] = useState('professional');
   const [audience, setAudience] = useState('general audience');
   const [targetModel, setTargetModel] = useState('GPT-4o');
   const [goal, setGoal] = useState('Help me produce high-quality responses.');
+  const [category, setCategory] = useState('Marketing');
   const [result, setResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [history, setHistory] = useState<PromptHistoryItem[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('prompt-writer-history');
+      if (stored) {
+        setHistory(JSON.parse(stored));
+      }
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('prompt-writer-history', JSON.stringify(history));
+    } catch {
+      // Ignore storage errors in private browsing or quota-limited scenarios.
+    }
+  }, [history]);
+
+  const promptSummary = useMemo(() => {
+    if (!prompt.trim()) return 'No prompt idea entered yet.';
+    return prompt.trim().slice(0, 90) + (prompt.trim().length > 90 ? '...' : '');
+  }, [prompt]);
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -51,17 +87,57 @@ export default function PromptWriter() {
     }
   };
 
+  const handleSavePrompt = () => {
+    if (!result.trim()) return;
+
+    const item: PromptHistoryItem = {
+      id: `${Date.now()}`,
+      title: promptSummary || 'Untitled prompt',
+      prompt: result,
+      category,
+      createdAt: new Date().toISOString(),
+    };
+
+    setHistory((current) => [item, ...current].slice(0, 8));
+  };
+
+  const handleCopy = async () => {
+    if (!result.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(result);
+    } catch {
+      // no-op fallback
+    }
+  };
+
+  const handleLoadHistory = (item: PromptHistoryItem) => {
+    setPrompt(item.prompt);
+    setCategory(item.category);
+    setResult(item.prompt);
+  };
+
   return (
     <main className="page-shell">
       <section className="panel hero-panel">
         <div className="title-row">
           <div>
-            <p className="eyebrow">AI assistant tool</p>
+            <p className="eyebrow">AI prompt studio</p>
             <h1>Prompt Writer</h1>
           </div>
-          <button className="secondary-button" type="button" onClick={() => setPrompt('')}>
-            Clear
-          </button>
+          <div className="title-actions">
+            <button className="secondary-button" type="button" onClick={() => setPrompt('')}>
+              Clear
+            </button>
+            <button className="secondary-button" type="button" onClick={() => setHistory([])}>
+              Reset history
+            </button>
+          </div>
+        </div>
+
+        <div className="status-bar">
+          <span className="status-pill">{category}</span>
+          <span className="status-copy">{promptSummary}</span>
         </div>
 
         <div className="template-grid">
@@ -81,6 +157,17 @@ export default function PromptWriter() {
               <option value="shorten">Shorten</option>
               <option value="expand">Expand</option>
               <option value="rewrite">Rewrite</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Category</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {categoryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -126,25 +213,45 @@ export default function PromptWriter() {
           />
         </label>
 
-        <button className="primary-button" type="button" onClick={handleGenerate} disabled={isLoading}>
-          {isLoading ? 'Generating...' : 'Generate Prompt'}
-        </button>
+        <div className="action-row">
+          <button className="primary-button" type="button" onClick={handleGenerate} disabled={isLoading}>
+            {isLoading ? 'Generating...' : 'Generate Prompt'}
+          </button>
+          <button className="secondary-button" type="button" onClick={handleSavePrompt} disabled={!result.trim()}>
+            Save to library
+          </button>
+        </div>
       </section>
 
       <section className="panel result-panel">
         <div className="result-header">
           <h2>Final prompt</h2>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => navigator.clipboard.writeText(result)}
-            disabled={!result}
-          >
+          <button className="secondary-button" type="button" onClick={handleCopy} disabled={!result}>
             Copy
           </button>
         </div>
 
         <pre>{result || 'Your generated prompt will appear here.'}</pre>
+
+        <div className="library-panel">
+          <div className="library-header">
+            <h3>Saved prompts</h3>
+          </div>
+
+          {history.length === 0 ? (
+            <p className="empty-library">Your saved prompts will appear here.</p>
+          ) : (
+            <div className="history-list">
+              {history.map((item) => (
+                <button key={item.id} type="button" className="history-item" onClick={() => handleLoadHistory(item)}>
+                  <span className="history-category">{item.category}</span>
+                  <strong>{item.title}</strong>
+                  <small>{new Date(item.createdAt).toLocaleDateString()}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
     </main>
   );
